@@ -4,9 +4,13 @@ import sys
 import os
 import argparse
 import re
+import traceback
 
 # 1MB buffer size
 BUFFER_SIZE = 1000000
+
+# debug mode
+debug = True
 
 # Get the IP address and Port number to use for this web proxy server
 parser = argparse.ArgumentParser()
@@ -20,20 +24,22 @@ proxyPort = int(args.port)
 try:
   # Create a server socket
   # ~~~~ INSERT CODE ~~~~
-  serverSocket = socket(AF_INET, SOCK_STREAM) #im pretty sure these are both default values
+  serverSocket = socket.socket() #im pretty sure these are both default values
   # ~~~~ END CODE INSERT ~~~~
   print ('Created socket')
 except:
+  if debug: print(traceback.format_exc())
   print ('Failed to create socket')
   sys.exit()
 
 try:
   # Bind the the server socket to a host and port
   # ~~~~ INSERT CODE ~~~~
-  serverSocket.bind(proxyPort)
+  serverSocket.bind(('',proxyPort))
   # ~~~~ END CODE INSERT ~~~~
   print ('Port is bound')
 except:
+  if debug: print(traceback.format_exc())
   print('Port is already in use')
   sys.exit()
 
@@ -44,6 +50,7 @@ try:
   # ~~~~ END CODE INSERT ~~~~
   print ('Listening to socket')
 except:
+  if debug: print(traceback.format_exc())
   print ('Failed to listen')
   sys.exit()
 
@@ -59,6 +66,7 @@ while True:
     # ~~~~ END CODE INSERT ~~~~
     print ('Received a connection')
   except:
+    if debug: print(traceback.format_exc())
     print ('Failed to accept connection')
     sys.exit()
 
@@ -124,6 +132,7 @@ while True:
     print ('Sent to the client:')
     print ('> ' + cacheData)
   except:
+    if debug: print(traceback.format_exc())
     # cache miss.  Get resource from origin server
     originServerSocket = None
     # Create a socket to connect to origin server
@@ -163,6 +172,7 @@ while True:
       try:
         originServerSocket.sendall(request.encode())
       except socket.error:
+        if debug: print(traceback.format_exc())
         print ('Forward request to origin failed')
         sys.exit()
 
@@ -196,9 +206,11 @@ while True:
       clientSocket.shutdown(socket.SHUT_WR)
       print ('client socket shutdown for writing')
     except OSError as err:
+      if debug: print(traceback.format_exc())
       print ('origin server request failed. ' + err.strerror)
 
   try:
     clientSocket.close()
   except:
+    if debug: print(traceback.format_exc())
     print ('Failed to close client socket')
