@@ -5,6 +5,8 @@ import os
 import argparse
 import re
 import traceback
+import time
+import datetime
 
 # 1MB buffer size
 BUFFER_SIZE = 1000000
@@ -126,7 +128,24 @@ while True:
     # ProxyServer finds a cache hit
     # Send back response to client 
     # ~~~~ INSERT CODE ~~~~
+    cacheExpires = False
+    for item in cacheData:
+        if item.startswith("Cache-Control:"):
+          itemFields = item.split()
+          for field in itemFields:
+            if field.startswith("max-age="):
+              maxAge = int(field[field.find("=")+1:])
+              cacheExpires = True
+        if item.startswith("Date:"):
+          timestampStr = item[item.find(" ")+1:].strip()
+          timestamp = datetime.datetime.strptime(timestampStr, "%a, %d %b %Y %H:%M:%S %Z")
+          timestamp = timestamp.replace(tzinfo=datetime.UTC)
+          currTimestamp = datetime.datetime.now(datetime.UTC)
+          timeElapsed = (currTimestamp-timestamp).total_seconds()
 
+    if (cacheExpires and (timeElapsed > maxAge)):
+      raise Exception("Cache Expired") 
+       
     cacheData = "".join(cacheData)
     clientSocket.sendall(cacheData.encode())
     # ~~~~ END CODE INSERT ~~~~
@@ -162,10 +181,11 @@ while True:
       # ~~~~ INSERT CODE ~~~~
       originServerRequest = method + ' ' + resource + ' ' + version
       headers = message.splitlines()
+      headers = headers[1:]
       for i, item in enumerate(headers):
-        if item[0:5] == "Host:":
+        if item.startswith("Host:"):
           headers[i] = "Host: " + hostname + ":" + "80"
-      originServerRequestHeader = "\n".join(headers[1:])
+      originServerRequestHeader = "\n".join(headers)
       # ~~~~ END CODE INSERT ~~~~
 
       # Construct the request to send to the origin server
@@ -195,8 +215,8 @@ while True:
       responseHeader = responseHeader.splitlines()
       contentLengthDefined = False
       for item in responseHeader:
-        if item[0:15] == "Content-Length:":
-          contentLength = int(item[16:])
+        if item.startswith("Content-Length:"):
+          contentLength = int(item[(item.find(" ")+1):])
           contentLengthDefined = True
       if contentLengthDefined:
         while len(response) < (contentLength + p1 + len(b"\r\n\r\n")):
