@@ -12,7 +12,7 @@ import datetime
 BUFFER_SIZE = 1000000
 
 # debug mode
-debug = True
+debug = False
 
 # Get the IP address and Port number to use for this web proxy server
 parser = argparse.ArgumentParser()
@@ -230,24 +230,28 @@ while True:
       # ~~~~ INSERT CODE ~~~~
       clientSocket.sendall(response)
       # ~~~~ END CODE INSERT ~~~~
-      #should probably only cache OK's
-      if statusCode == b"200":
+      #only try to cache codes that are cacheable (according to rfc)
+      cacheableCodes = [b"200", b"203", b"206", b"300", b"301", b"410"]
+      if statusCode in cacheableCodes:
         #This if statement stops the server caching if no-store is specified
         if not "Cache-Control: no-store" in responseHeader:
-          # Create a new file in the cache for the requested file.
-          cacheDir, file = os.path.split(cacheLocation)
-          print ('cached directory ' + cacheDir)
-          if not os.path.exists(cacheDir):
-            os.makedirs(cacheDir)
-          cacheFile = open(cacheLocation, 'wb')
+          #try except to catch issue with invalid file directories in the cache
+          try:
+            # Create a new file in the cache for the requested file.
+            cacheDir, file = os.path.split(cacheLocation)
+            print ('cached directory ' + cacheDir)
+            if not os.path.exists(cacheDir):
+              os.makedirs(cacheDir)
+            cacheFile = open(cacheLocation, 'wb')
 
-          # Save origin server response in the cache file
-          # ~~~~ INSERT CODE ~~~~
-          cacheFile.write(response)
-          # ~~~~ END CODE INSERT ~~~~
-          cacheFile.close()
-          print ('cache file closed')
-
+            # Save origin server response in the cache file
+            # ~~~~ INSERT CODE ~~~~
+            cacheFile.write(response)
+            # ~~~~ END CODE INSERT ~~~~
+            cacheFile.close()
+            print ('cache file closed')
+          except OSError as err:
+            print ('Cache Failed. ' + err.strerror) #windows doesn't allow ? in file directory
       # finished communicating with origin server - shutdown socket writes
       print ('origin response received. Closing sockets')
       originServerSocket.close()
