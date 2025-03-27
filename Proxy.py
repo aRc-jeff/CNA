@@ -126,6 +126,7 @@ while True:
     # ProxyServer finds a cache hit
     # Send back response to client 
     # ~~~~ INSERT CODE ~~~~
+
     cacheData = "".join(cacheData)
     clientSocket.sendall(cacheData.encode())
     # ~~~~ END CODE INSERT ~~~~
@@ -187,26 +188,40 @@ while True:
       # Get the response from the origin server
       # ~~~~ INSERT CODE ~~~~
       response = originServerSocket.recv(BUFFER_SIZE)
+      p0 = response.find(b"\r\n")
+      p1 = response.find(b"\r\n\r\n")
+      responseHeader = response[(p0+len(b"\r\n")):(p1 + len(b"\r\n"))]
+      responseHeader = responseHeader.decode('utf-8')
+      responseHeader = responseHeader.splitlines()
+      contentLengthDefined = False
+      for item in responseHeader:
+        if item[0:15] == "Content-Length:":
+          contentLength = int(item[16:])
+          contentLengthDefined = True
+      if contentLengthDefined:
+        while len(response) < (contentLength + p1 + len(b"\r\n\r\n")):
+          response += originServerSocket.recv(BUFFER_SIZE)
       # ~~~~ END CODE INSERT ~~~~
 
       # Send the response to the client
       # ~~~~ INSERT CODE ~~~~
       clientSocket.sendall(response)
       # ~~~~ END CODE INSERT ~~~~
+      #This if statement stops the server caching if no-store is specified
+      if not "Cache-Control: no-store" in responseHeader:
+        # Create a new file in the cache for the requested file.
+        cacheDir, file = os.path.split(cacheLocation)
+        print ('cached directory ' + cacheDir)
+        if not os.path.exists(cacheDir):
+          os.makedirs(cacheDir)
+        cacheFile = open(cacheLocation, 'wb')
 
-      # Create a new file in the cache for the requested file.
-      cacheDir, file = os.path.split(cacheLocation)
-      print ('cached directory ' + cacheDir)
-      if not os.path.exists(cacheDir):
-        os.makedirs(cacheDir)
-      cacheFile = open(cacheLocation, 'wb')
-
-      # Save origin server response in the cache file
-      # ~~~~ INSERT CODE ~~~~
-      cacheFile.write(response)
-      # ~~~~ END CODE INSERT ~~~~
-      cacheFile.close()
-      print ('cache file closed')
+        # Save origin server response in the cache file
+        # ~~~~ INSERT CODE ~~~~
+        cacheFile.write(response)
+        # ~~~~ END CODE INSERT ~~~~
+        cacheFile.close()
+        print ('cache file closed')
 
       # finished communicating with origin server - shutdown socket writes
       print ('origin response received. Closing sockets')
