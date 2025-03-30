@@ -147,6 +147,7 @@ while True:
     # Check wether the file is currently in the cache
     cacheFile = open(cacheLocation, "rb")
     cacheData = cacheFile.readlines()
+    cacheData = [item.decode() for item in cacheData]
 
     print ('Cache hit! Loading from cache file: ' + cacheLocation)
     # ProxyServer finds a cache hit
