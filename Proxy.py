@@ -129,13 +129,18 @@ while True:
     # Send back response to client 
     # ~~~~ INSERT CODE ~~~~
     cacheExpires = False
+    #loop to check headers
     for item in cacheData:
+        #response to cache control headers
         if item.startswith("Cache-Control:"):
           itemFields = item.split()
+          #find max-age=
           for field in itemFields:
             if field.startswith("max-age="):
+              #save max age value and raise expiry flag
               maxAge = int(field[field.find("=")+1:])
               cacheExpires = True
+        #find the timestamp of the cache
         if item.startswith("Date:"):
           timestampStr = item[item.find(" ")+1:].strip()
           timestamp = datetime.datetime.strptime(timestampStr, "%a, %d %b %Y %H:%M:%S %Z")
@@ -143,9 +148,11 @@ while True:
           currTimestamp = datetime.datetime.now(datetime.UTC)
           timeElapsed = (currTimestamp-timestamp).total_seconds()
 
+    #raise exception if max age is exceeded (exception results in fetching from origin)
     if (cacheExpires and (timeElapsed > maxAge)):
       raise Exception("Cache Expired") 
-       
+    
+    #send cache data
     cacheData = "".join(cacheData)
     clientSocket.sendall(cacheData.encode())
     # ~~~~ END CODE INSERT ~~~~
@@ -179,12 +186,16 @@ while True:
       # originServerRequest is the first line in the request and
       # originServerRequestHeader is the second line in the request
       # ~~~~ INSERT CODE ~~~~
+      #complie message line
       originServerRequest = method + ' ' + resource + ' ' + version
+      #split lines from the message, removing the first line as it is th request line
       headers = message.splitlines()
       headers = headers[1:]
+      #correct the hostname header
       for i, item in enumerate(headers):
         if item.startswith("Host:"):
           headers[i] = "Host: " + hostname + ":" + "80"
+      #build the headers 
       originServerRequestHeader = "\n".join(headers)
       # ~~~~ END CODE INSERT ~~~~
 
@@ -207,20 +218,29 @@ while True:
 
       # Get the response from the origin server
       # ~~~~ INSERT CODE ~~~~
+      #Receive data from origin server
       response = originServerSocket.recv(BUFFER_SIZE)
+      #since for larger messages sometimes recv doesnt get the whole message (returns whatever is in the buffer, not necessarily the whole msg)
+      #next code chunk breaks up the response to find the headers, find the content-length header and continue to recieve data until the message is the right length
+      #first CRLF before header
       p0 = response.find(b"\r\n")
+      #CRLF CRLF after header
       p1 = response.find(b"\r\n\r\n")
+      #split out the headers
       responseHeader = response[(p0+len(b"\r\n")):(p1 + len(b"\r\n"))]
       responseHeader = responseHeader.decode('utf-8')
       responseHeader = responseHeader.splitlines()
       contentLengthDefined = False
+      #find the content length header and determine the length of the msg
       for item in responseHeader:
         if item.startswith("Content-Length:"):
           contentLength = int(item[(item.find(" ")+1):])
           contentLengthDefined = True
+      #loop recv untill all the message is recieved
       if contentLengthDefined:
         while len(response) < (contentLength + p1 + len(b"\r\n\r\n")):
           response += originServerSocket.recv(BUFFER_SIZE)
+      #split out the status line and isolate the statusCode
       statusLine = response[:p0]
       statusElements = statusLine.split()
       statusCode = statusElements[1]
