@@ -5,7 +5,6 @@ import os
 import argparse
 import re
 import traceback
-import time
 import datetime
 
 # 1MB buffer size
