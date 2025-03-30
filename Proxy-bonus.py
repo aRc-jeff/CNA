@@ -5,6 +5,10 @@
 #A flag will be raised if the cache is expired and an exception raised that the cache expired, 
 #resulting in the request being fetched from the origin server
 #
+#Extension 2:
+#Added logic to extract all href and src assets using regular expressions filling a list
+#Might implement the requesting a caching if I get time, would require significant restructuring of code
+#
 #Extension 3:
 #Added logic to split the hostname around the : into a hostname and a hostport (defaults to 80).
 #Previously host port was hardcoded at 80, replaced with host port variable
@@ -141,7 +145,7 @@ while True:
     fileExists = os.path.isfile(cacheLocation)
     
     # Check wether the file is currently in the cache
-    cacheFile = open(cacheLocation, "r")
+    cacheFile = open(cacheLocation, "rb")
     cacheData = cacheFile.readlines()
 
     print ('Cache hit! Loading from cache file: ' + cacheLocation)
@@ -286,6 +290,13 @@ while True:
       # Send the response to the client
       # ~~~~ INSERT CODE ~~~~
       clientSocket.sendall(response)
+
+      #find all src and href assets in the message body and build a list to cache
+      src = rb'src=["\'](.*?)["\']'
+      srcMatches = re.findall(src, response[p1:], re.IGNORECASE)
+      href = rb'href=["\'](.*?)["\']'
+      hrefMatches = re.findall(href, response[p1:], re.IGNORECASE)
+      objects = [match.decode() for match in srcMatches] + [match.decode() for match in hrefMatches]
       # ~~~~ END CODE INSERT ~~~~
       #only try to cache codes that are cacheable (according to rfc)
       cacheableCodes = [b"200", b"203", b"206", b"300", b"301", b"410"]

@@ -120,7 +120,7 @@ while True:
     fileExists = os.path.isfile(cacheLocation)
     
     # Check wether the file is currently in the cache
-    cacheFile = open(cacheLocation, "r")
+    cacheFile = open(cacheLocation, "rb")
     cacheData = cacheFile.readlines()
 
     print ('Cache hit! Loading from cache file: ' + cacheLocation)
