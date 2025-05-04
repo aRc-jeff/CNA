@@ -23,7 +23,7 @@
    - added GBN implementation
 **********************************************************************/
 
-#define debug 1
+#define debug 0
 
 #define RTT  16.0       /* round trip time.  MUST BE SET TO 16.0 when submitting assignment */
 #define WINDOWSIZE 6    /* the maximum number of buffered unacked packet
