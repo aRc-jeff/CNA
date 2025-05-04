@@ -227,12 +227,10 @@ void B_input(struct pkt packet)
     if  ( !IsCorrupted(packet) ) {
         baseOffset =  (packet.seqnum - expectedseqnum + SEQSPACE) % SEQSPACE;
         windowIndex = (baseOffset + expectedseqnum) % WINDOWSIZE;
-        if (baseOffset < WINDOWSIZE){
-
-            if (TRACE > 0)
+        if (TRACE > 0)
                 printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
             packets_received++;
-
+        if (baseOffset < WINDOWSIZE){
             /* send an ACK for the received packet */
             sendpkt.acknum = packet.seqnum;
 
