@@ -1,0 +1,45 @@
+commit c7b520172c49bf0f2531f2014b0fe8227c78994f
+Author: Timothy Szabo <timothyszabo@pop-os.localdomain>
+Date:   Mon May 5 02:22:30 2025 +0930
+
+    fixed b packets recieved counter
+
+commit 8d808cf4ab273936a10ffffc7a40da2948512556
+Author: Timothy Szabo <timothyszabo@pop-os.localdomain>
+Date:   Mon May 5 02:16:07 2025 +0930
+
+    removed some more bonus traceprints
+
+commit 29081e1bcb154dbf084cb0fb5cc84c8e07621950
+Author: Timothy Szabo <timothyszabo@pop-os.localdomain>
+Date:   Mon May 5 02:14:23 2025 +0930
+
+    moved a trace print
+
+commit 668104a511fdfe4127b04868e0d15eca439c1242
+Author: Timothy Szabo <timothyszabo@pop-os.localdomain>
+Date:   Mon May 5 02:09:00 2025 +0930
+
+    removed debug flag
+
+commit 8147907a5894f1fa00217bd7367d882736c17588
+Author: Timothy Szabo <timothyszabo@pop-os.localdomain>
+Date:   Mon May 5 02:08:42 2025 +0930
+
+    Seems to work
+    
+    After screaming a circular buffers for > 4 h the numbers finally line up for my own tests
+
+commit d3ace9d5f8fc4bd427ee8b63917f62f2c2ab5e94
+Author: Timothy Szabo <timothyszabo@pop-os.localdomain>
+Date:   Sun May 4 17:19:36 2025 +0930
+
+    First edit
+    
+    added some basic functionality, there are definitly issues here
+
+commit 1148665a13533582ac488ed50f0d06f1ec7c75b0
+Author: Timothy <a1852299@adelaide.edu.au>
+Date:   Wed Mar 26 13:04:52 2025 +1030
+
+    first commit
