@@ -23,6 +23,8 @@
    - added GBN implementation
 **********************************************************************/
 
+#define debug 1
+
 #define RTT  16.0       /* round trip time.  MUST BE SET TO 16.0 when submitting assignment */
 #define WINDOWSIZE 6    /* the maximum number of buffered unacked packet
                           MUST BE SET TO 6 when submitting assignment */
@@ -69,6 +71,7 @@ void A_output(struct msg message)
 {
   struct pkt sendpkt;
   int i;
+  if (debug) printf("A_output\n");
 
   /* if not blocked waiting on ACK */
   if ( windowcount < WINDOWSIZE) {
@@ -114,10 +117,10 @@ void A_output(struct msg message)
 */
 void A_input(struct pkt packet)
 {
-  int ackcount = 0;
   int i = 0;
-  int j = 0;
-
+  int windowIndex = 0;
+  int baseOffset = 0;
+  if (debug) printf("A_input\n");
 
   /* if received ACK is not corrupted */
   if (!IsCorrupted(packet)) {
@@ -128,37 +131,40 @@ void A_input(struct pkt packet)
     /* check if new ACK or duplicate */
     if (windowcount != 0) {
           int seqfirst = buffer[windowfirst].seqnum;
-          int seqlast = buffer[windowlast].seqnum;
           /* check case when seqnum has and hasn't wrapped */
-          if (((seqfirst <= seqlast) && (packet.acknum >= seqfirst && packet.acknum <= seqlast)) ||
-              ((seqfirst > seqlast) && (packet.acknum >= seqfirst || packet.acknum <= seqlast))) {
+          baseOffset = (packet.acknum - seqfirst + SEQSPACE) % SEQSPACE;
+          windowIndex = (seqfirst + baseOffset) % WINDOWSIZE;
+          printf("%d\n", seqfirst);
+          printf("%d\n", windowIndex);
+          if (baseOffset < WINDOWSIZE) {
 
-            /* packet is a new ACK */
-            if (TRACE > 0)
-              printf("----A: ACK %d is not a duplicate\n",packet.acknum);
-            new_ACKs++;
-            ackcount++;
-            A_ackedPackets[packet.acknum - seqfirst] = true;
+            if (!A_ackedPackets[windowIndex]){
+                /* packet is a new ACK */
+                if (TRACE > 0)
+                    printf("----A: ACK %d is not a duplicate\n",packet.acknum);
+                new_ACKs++;
+                A_ackedPackets[windowIndex] = true;
 
-            /* cumulative acknowledgement - determine how many packets are ACKed */
-            while ((i < WINDOWSIZE) && (A_ackedPackets[i] == true)){
-                i++;
+                /* slide window forwards */
+                i = seqfirst;
+                while ((i < seqfirst + WINDOWSIZE) && (A_ackedPackets[(i + WINDOWSIZE) % WINDOWSIZE] == true)){
+                    A_ackedPackets[(i + WINDOWSIZE) % WINDOWSIZE] = false;
+                    i++;
+                }
+
+                /* delete the acked packets from window buffer */
+                windowcount -= (i - seqfirst + WINDOWSIZE) % WINDOWSIZE;
+                windowfirst = (windowfirst + i - seqfirst) % WINDOWSIZE;
+                windowlast = (windowfirst + windowcount - 1) % WINDOWSIZE;
+
+            /* start timer again if there are still more unacked packets in window */
+                if (packet.acknum == seqfirst){
+                    stoptimer(A);
+                    if (windowcount > 0)
+                        starttimer(A, RTT);
+                }
             }
-            memmove(A_ackedPackets, A_ackedPackets + i, (WINDOWSIZE - i) * sizeof(bool));
-            memset(A_ackedPackets + WINDOWSIZE - i, 0, i*sizeof(bool));
-            memmove(buffer, buffer + i, (WINDOWSIZE - i) * sizeof(struct pkt));
-            memset(buffer + WINDOWSIZE - i, 0, i*sizeof(struct pkt));
-
-            /* delete the acked packets from window buffer */
-            for (j=0; j<i; j++)
-              windowcount--;
-
-	    /* start timer again if there are still more unacked packets in window */
-            stoptimer(A);
-            if (windowcount > 0)
-              starttimer(A, RTT);
-
-          }
+            }
         }
     else
         if (TRACE > 0)
@@ -172,13 +178,14 @@ void A_input(struct pkt packet)
 /* called when A's timer goes off */
 void A_timerinterrupt(void)
 {
+    if (debug) printf("A_timerinterrupt\n");
     if (TRACE > 0)
         printf("----A: time out,resend packets!\n");
 
     if (TRACE > 0)
         printf ("---A: resending packet %d\n", (buffer[(windowfirst) % WINDOWSIZE]).seqnum);
-
-    tolayer3(A,buffer[(windowfirst) % WINDOWSIZE]);
+        
+    tolayer3(A,buffer[windowfirst]);
     packets_resent++;
     starttimer(A,RTT);
 }
@@ -213,53 +220,63 @@ static struct pkt B_packetBuffer[WINDOWSIZE];
 /* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
 {
-  struct pkt sendpkt;
-  int i = 0;
+    struct pkt sendpkt;
+    int i = 0;
+    int windowIndex = 0;
+    int baseOffset = 0;
+    if (debug) printf("B_input\n");
 
-  /* if not corrupted and received packet is in order */
-  if  ( (!IsCorrupted(packet))  && ((packet.seqnum >= expectedseqnum) || (packet.seqnum < expectedseqnum + SEQSPACE)) ) {
-    if (TRACE > 0)
-      printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
-    packets_received++;
+    /* if not corrupted and received packet is in order */
+    if  ( !IsCorrupted(packet) ) {
+        baseOffset =  (packet.seqnum - expectedseqnum + SEQSPACE) % SEQSPACE;
+        windowIndex = (baseOffset + expectedseqnum) % WINDOWSIZE;
+        if (baseOffset < WINDOWSIZE){
 
-    /* send an ACK for the received packet */
-    sendpkt.acknum = packet.seqnum;
+            if (TRACE > 0)
+                printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
+            packets_received++;
 
-    /*  mark packet as recieved in windo*/
-    B_ackedPackets[packet.seqnum - expectedseqnum] = true;
-    B_packetBuffer[packet.seqnum - expectedseqnum] = packet;
+            /* send an ACK for the received packet */
+            sendpkt.acknum = packet.seqnum;
 
-    /* update state variables */
-    while ((i < WINDOWSIZE) && (B_ackedPackets[i] == true)){
-        i++;
-        /* deliver to receiving application */
-        tolayer5(B, B_packetBuffer[i].payload);
+            /*  mark packet as recieved in windo*/
+            B_ackedPackets[windowIndex] = true;
+            B_packetBuffer[windowIndex] = packet;
+
+            /* update state variables */
+            i = expectedseqnum;
+            while ((i < expectedseqnum + WINDOWSIZE) && (B_ackedPackets[(i + WINDOWSIZE) % WINDOWSIZE] == true)){
+                /* deliver to receiving application */
+                B_ackedPackets[(i + WINDOWSIZE) % WINDOWSIZE] = false;
+                tolayer5(B, B_packetBuffer[(i + WINDOWSIZE) % WINDOWSIZE].payload);
+                i++;
+            }
+            expectedseqnum = i % SEQSPACE;   
+        }
+        else{
+            sendpkt.acknum = packet.seqnum;
+        }
+
+        /* create packet */
+        sendpkt.seqnum = B_nextseqnum;
+        B_nextseqnum = (B_nextseqnum + 1) % SEQSPACE;
+
+        /* we don't have any data to send.  fill payload with 0's */
+        for ( i=0; i<20 ; i++ )
+            sendpkt.payload[i] = '0';
+
+        /* computer checksum */
+        sendpkt.checksum = ComputeChecksum(sendpkt);
+
+        /* send out packet */
+        tolayer3 (B, sendpkt);
     }
-    memmove(B_ackedPackets, B_ackedPackets + i, (WINDOWSIZE - i) * sizeof(bool));
-    memset(B_ackedPackets + WINDOWSIZE - i, 0, i*sizeof(bool));
-    memmove(B_packetBuffer, B_packetBuffer + i, (WINDOWSIZE - i) * sizeof(struct pkt));
-    memset(B_packetBuffer + WINDOWSIZE - i, 0, i*sizeof(struct pkt));
-    expectedseqnum = (expectedseqnum + i) % SEQSPACE;
-  }
+
   else {
     /* packet is corrupted or out of order resend last ACK */
     if (TRACE > 0)
       printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
   }
-
-  /* create packet */
-  sendpkt.seqnum = B_nextseqnum;
-  B_nextseqnum = (B_nextseqnum + 1) % SEQSPACE;
-
-  /* we don't have any data to send.  fill payload with 0's */
-  for ( i=0; i<20 ; i++ )
-    sendpkt.payload[i] = '0';
-
-  /* computer checksum */
-  sendpkt.checksum = ComputeChecksum(sendpkt);
-
-  /* send out packet */
-  tolayer3 (B, sendpkt);
 }
 
 /* the following routine will be called once (only) before any other */
