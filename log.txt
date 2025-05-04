@@ -1,3 +1,17 @@
+commit 170a139200c0a0a2effa26019c0cb88818d8c29d
+Author: Timothy Szabo <timothyszabo@pop-os.localdomain>
+Date:   Mon May 5 02:29:00 2025 +0930
+
+    added one traceprint, this better the the last
+    
+    gonna be mad if I lost % due to these traceprints
+
+commit ad15f3fafcf8b9e4bf642a332c9814319a4bae51
+Author: Timothy Szabo <timothyszabo@pop-os.localdomain>
+Date:   Mon May 5 02:24:20 2025 +0930
+
+    added log file
+
 commit c7b520172c49bf0f2531f2014b0fe8227c78994f
 Author: Timothy Szabo <timothyszabo@pop-os.localdomain>
 Date:   Mon May 5 02:22:30 2025 +0930
