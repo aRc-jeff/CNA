@@ -134,8 +134,6 @@ void A_input(struct pkt packet)
           /* check case when seqnum has and hasn't wrapped */
           baseOffset = (packet.acknum - seqfirst + SEQSPACE) % SEQSPACE;
           windowIndex = (seqfirst + baseOffset) % WINDOWSIZE;
-          printf("%d\n", seqfirst);
-          printf("%d\n", windowIndex);
           if (baseOffset < WINDOWSIZE) {
 
             if (!A_ackedPackets[windowIndex]){
