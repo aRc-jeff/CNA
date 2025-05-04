@@ -249,6 +249,8 @@ void B_input(struct pkt packet)
             expectedseqnum = i % SEQSPACE;   
         }
         else{
+            if (TRACE > 0)
+                printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
             sendpkt.acknum = packet.seqnum;
         }
 
@@ -266,12 +268,11 @@ void B_input(struct pkt packet)
         /* send out packet */
         tolayer3 (B, sendpkt);
     }
-
-  else {
-    /* packet is corrupted or out of order resend last ACK */
-    if (TRACE > 0)
-      printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
-  }
+    else {
+        /* packet is corrupted or out of order resend last ACK */
+        if (TRACE > 0)
+        printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
+    }
 }
 
 /* the following routine will be called once (only) before any other */
